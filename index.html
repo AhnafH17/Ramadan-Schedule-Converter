@@ -1,0 +1,1458 @@
+<!--
+  ============================================================
+  BRAC University — Ramadan Routine Converter
+  ============================================================
+  Created by Ahnaf Hussain (https://ahnafhussain.vercel.app/)
+
+  Vercel Deployment Steps:
+  1. Place index.html, bracu_course_codes.json, and time_map.json
+     in a single folder (project root).
+  2. Push to a Git repository or use Vercel CLI.
+  3. In Vercel dashboard: Import project → Framework: Other
+     → Build Command: (leave empty) → Output Directory: ./
+  4. Deploy. No build step needed — pure static site.
+  ============================================================
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ramadan Routine Converter — BRAC University</title>
+<meta name="description" content="Convert your BRAC University class schedule to Ramadan timing instantly.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root {
+  --gold: #C9A84C;
+  --gold-light: #E2CA7E;
+  --gold-dim: #A68B3A;
+  --gold-glow: rgba(201,168,76,0.12);
+  --gold-glow-strong: rgba(201,168,76,0.22);
+  --bg-primary: #0A0A0A;
+  --bg-secondary: #111111;
+  --bg-card: #141414;
+  --bg-elevated: #1A1A1A;
+  --bg-input: #1E1E1E;
+  --border: #2A2A2A;
+  --border-hover: #3A3A3A;
+  --border-gold: rgba(201,168,76,0.25);
+  --text-primary: #F0EDE6;
+  --text-secondary: #A09A90;
+  --text-muted: #605C55;
+  --danger: #E05555;
+  --danger-bg: rgba(224,85,85,0.1);
+  --success: #4CAF7D;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 20px rgba(0,0,0,0.4);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.5);
+  --shadow-gold: 0 0 20px rgba(201,168,76,0.15);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --font-body: 'Outfit', system-ui, sans-serif;
+  --font-display: 'Syne', sans-serif;
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 15% 5%, rgba(201,168,76,0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 90%, rgba(201,168,76,0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(201,168,76,0.02) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Header ────────────────────────────────────────── */
+.header {
+  background: rgba(10,10,10,0.85);
+  backdrop-filter: blur(20px) saturate(1.2);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+}
+
+.header-brand { display: flex; align-items: center; gap: 16px; }
+
+.header-logo {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.header-divider { width: 1px; height: 24px; background: var(--border); }
+
+.header-title {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  letter-spacing: 0.03em;
+}
+
+/* ── Like Button ───────────────────────────────────── */
+.like-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, rgba(201,168,76,0.15), rgba(201,168,76,0.05));
+  border: 1.5px solid var(--border-gold);
+  color: var(--gold-light);
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: var(--font-body);
+}
+
+.like-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(201,168,76,0.25), rgba(201,168,76,0.1));
+  border-color: var(--gold);
+  box-shadow: var(--shadow-gold);
+  transform: translateY(-1px);
+}
+
+.like-btn:disabled { cursor: default; }
+
+.like-btn svg { width: 16px; height: 16px; transition: all 0.3s ease; }
+
+.like-btn.liked svg {
+  fill: var(--gold);
+  color: var(--gold);
+  filter: drop-shadow(0 0 4px rgba(201,168,76,0.4));
+}
+
+.like-btn.liked {
+  border-color: var(--gold);
+  background: linear-gradient(135deg, rgba(201,168,76,0.2), rgba(201,168,76,0.08));
+}
+
+.like-count { font-variant-numeric: tabular-nums; }
+
+/* ── Main ──────────────────────────────────────────── */
+.main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 24px 60px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Hero ──────────────────────────────────────────── */
+.hero { text-align: center; padding: 48px 0 40px; }
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--gold-glow);
+  color: var(--gold);
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  border: 1px solid rgba(201,168,76,0.15);
+}
+
+.hero-badge svg { width: 13px; height: 13px; }
+
+.hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(32px, 5.5vw, 52px);
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin-bottom: 14px;
+}
+
+.hero h1 span {
+  background: linear-gradient(135deg, var(--gold-light), var(--gold), var(--gold-dim));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero p {
+  color: var(--text-secondary);
+  font-size: 16px;
+  max-width: 500px;
+  margin: 0 auto;
+  font-weight: 300;
+}
+
+/* ── Cards ─────────────────────────────────────────── */
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.card-header h2 {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  letter-spacing: -0.01em;
+}
+
+.card-header h2 svg { width: 20px; height: 20px; color: var(--gold); }
+
+.card-body { padding: 24px; }
+
+/* ── Entry Builder ─────────────────────────────────── */
+.entries-section { margin-bottom: 28px; }
+.entry-list { display: flex; flex-direction: column; gap: 16px; }
+
+.entry-row {
+  padding: 20px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  transition: var(--transition);
+  position: relative;
+}
+
+.entry-row.collision {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+  animation: shake 0.4s ease;
+}
+
+@keyframes shake {
+  0%,100%{transform:translateX(0)}
+  20%,60%{transform:translateX(-4px)}
+  40%,80%{transform:translateX(4px)}
+}
+
+.entry-top {
+  display: grid;
+  grid-template-columns: 1.2fr 0.6fr 1fr 1fr;
+  gap: 14px;
+  align-items: end;
+  padding-right: 40px;
+}
+
+/* ── Type Toggle ───────────────────────────────────── */
+.type-toggle {
+  display: flex;
+  gap: 0;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  height: 44px;
+}
+
+.type-toggle-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 10px;
+  background: var(--bg-input);
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.type-toggle-btn:last-child { border-right: none; }
+
+.type-toggle-btn:hover { color: var(--text-secondary); background: var(--bg-elevated); }
+
+.type-toggle-btn.active {
+  background: linear-gradient(135deg, rgba(201,168,76,0.18), rgba(201,168,76,0.06));
+  color: var(--gold-light);
+  border-color: var(--gold);
+}
+
+.type-toggle-btn svg { width: 13px; height: 13px; }
+
+.lab-info {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--gold-dim);
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.field-group { display: flex; flex-direction: column; gap: 6px; }
+
+.field-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.field-input, .field-select {
+  height: 44px;
+  padding: 0 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-primary);
+  transition: var(--transition);
+  width: 100%;
+}
+
+.field-input::placeholder { color: var(--text-muted); }
+
+.field-input:focus, .field-select:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-glow);
+}
+
+.field-select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23605C55' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 34px;
+}
+
+.field-select option { background: var(--bg-card); color: var(--text-primary); }
+
+.ramadan-time-display {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  background: linear-gradient(135deg, rgba(201,168,76,0.08), rgba(201,168,76,0.03));
+  border: 1.5px solid var(--border-gold);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gold-light);
+  white-space: nowrap;
+}
+
+.ramadan-time-display.empty {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-style: italic;
+}
+
+/* ── Day Chips ─────────────────────────────────────── */
+.day-select-section {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.day-select-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+
+.day-select-label span { opacity: 0.5; font-weight: 400; text-transform: none; letter-spacing: 0; }
+
+.day-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.day-chip {
+  padding: 7px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1.5px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  font-family: var(--font-body);
+}
+
+.day-chip:hover { border-color: var(--border-hover); color: var(--text-primary); }
+
+.day-chip.selected {
+  background: linear-gradient(135deg, rgba(201,168,76,0.2), rgba(201,168,76,0.08));
+  border-color: var(--gold);
+  color: var(--gold-light);
+  box-shadow: 0 0 10px rgba(201,168,76,0.1);
+}
+
+.btn-remove-entry {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-remove-entry:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+/* ── Typeahead ─────────────────────────────────────── */
+.typeahead-wrap { position: relative; }
+
+.typeahead-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-hover);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 50;
+  display: none;
+}
+
+.typeahead-dropdown.open { display: block; }
+
+.typeahead-item {
+  padding: 10px 14px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.1s;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.typeahead-item:hover, .typeahead-item.active {
+  background: var(--gold-glow);
+  color: var(--gold-light);
+}
+
+.typeahead-item .match-hl { color: var(--gold); font-weight: 700; }
+
+/* ── Buttons ───────────────────────────────────────── */
+.actions-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 22px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  border: none;
+}
+
+.btn svg { width: 16px; height: 16px; }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+  color: var(--bg-primary);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 4px 20px rgba(201,168,76,0.35);
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled { opacity: 0.4; cursor: default; transform: none; box-shadow: none; }
+
+.btn-secondary {
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  border: 1.5px solid var(--border);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+.btn-danger-outline {
+  background: transparent;
+  color: var(--danger);
+  border: 1.5px solid rgba(224,85,85,0.25);
+}
+
+.btn-danger-outline:hover { background: var(--danger-bg); border-color: var(--danger); }
+
+/* ── Empty State ───────────────────────────────────── */
+.empty-state { text-align: center; padding: 52px 24px; color: var(--text-muted); }
+.empty-state svg { width: 44px; height: 44px; margin-bottom: 14px; opacity: 0.3; color: var(--gold); }
+.empty-state p { font-size: 15px; margin-bottom: 4px; color: var(--text-secondary); }
+.empty-state small { font-size: 13px; }
+
+/* ── Schedule Grid ─────────────────────────────────── */
+.schedule-section { margin-top: 28px; }
+
+.schedule-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+.schedule-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+  min-width: 700px;
+}
+
+.schedule-table th, .schedule-table td {
+  padding: 13px 10px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+
+.schedule-table th:last-child, .schedule-table td:last-child { border-right: none; }
+
+.schedule-table thead th {
+  background: var(--bg-elevated);
+  color: var(--gold);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  border-top: 1px solid var(--border);
+}
+
+.schedule-table thead th:first-child {
+  border-radius: var(--radius-md) 0 0 0;
+  position: sticky;
+  left: 0;
+  z-index: 3;
+}
+
+.schedule-table thead th:last-child { border-radius: 0 var(--radius-md) 0 0; }
+
+.schedule-table tbody td:first-child {
+  background: var(--bg-secondary);
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  text-align: left;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+.schedule-table tbody tr:last-child td:first-child { border-radius: 0 0 0 var(--radius-md); }
+.schedule-table tbody tr:last-child td:last-child { border-radius: 0 0 var(--radius-md) 0; }
+.schedule-table tbody tr:last-child td { border-bottom: none; }
+
+.schedule-cell {
+  font-weight: 700;
+  color: var(--gold-light);
+  background: var(--gold-glow);
+  border: 1px solid rgba(201,168,76,0.15);
+  border-radius: 6px;
+  padding: 4px 10px;
+  display: inline-block;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+.schedule-cell.lab-cell {
+  background: linear-gradient(135deg, rgba(201,168,76,0.18), rgba(201,168,76,0.08));
+  border-color: rgba(201,168,76,0.25);
+}
+
+/* ── Toast ─────────────────────────────────────────── */
+.toast-container {
+  position: fixed;
+  top: 80px;
+  right: 24px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toast {
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  min-width: 280px;
+  max-width: 420px;
+  animation: slideIn 0.3s ease;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--danger);
+  color: var(--text-primary);
+}
+
+.toast.success { border-left-color: var(--success); }
+.toast svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+@keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+@keyframes slideOut { from{transform:translateX(0);opacity:1} to{transform:translateX(100%);opacity:0} }
+
+/* ── Modal ─────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.modal-overlay.open { opacity: 1; pointer-events: auto; }
+
+.modal-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 32px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  transform: scale(0.95);
+  transition: transform 0.2s;
+}
+
+.modal-overlay.open .modal-box { transform: scale(1); }
+.modal-box h3 { font-family: var(--font-display); font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.modal-box p { color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; }
+.modal-actions { display: flex; gap: 10px; justify-content: center; }
+
+/* ── Footer ────────────────────────────────────────── */
+.footer {
+  text-align: center;
+  padding: 40px 24px 52px;
+  position: relative;
+  z-index: 1;
+}
+
+.footer-line {
+  width: 60px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  margin: 0 auto 20px;
+}
+
+.footer-credit {
+  font-size: 17px;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.footer-credit a {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  font-weight: 600;
+  font-style: italic;
+  background: linear-gradient(135deg, var(--gold-light), var(--gold), var(--gold-dim));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.footer-credit a:hover { filter: brightness(1.2); }
+
+.footer-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 8px;
+  letter-spacing: 0.04em;
+}
+
+/* ── Responsive ────────────────────────────────────── */
+@media(max-width:900px) {
+  .entry-top { grid-template-columns: 1fr 1fr; padding-right: 40px; gap: 10px; }
+}
+
+@media(max-width:600px) {
+  .header-inner { height: 56px; padding: 0 16px; }
+  .header-divider,.header-title { display: none; }
+  .main { padding: 20px 16px 48px; }
+  .hero { padding: 32px 0 28px; }
+  .card-header { padding: 16px; }
+  .card-body { padding: 16px; }
+  .entry-top { grid-template-columns: 1fr; padding-right: 40px; }
+  .actions-row { flex-direction: column; }
+  .btn { justify-content: center; }
+  .day-chips { gap: 6px; }
+  .day-chip { padding: 6px 12px; font-size: 12px; }
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #444; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <div class="header-brand">
+      <div class="header-logo">BRAC University</div>
+      <div class="header-divider"></div>
+      <div class="header-title">Ramadan Routine Converter</div>
+    </div>
+    <div class="header-actions">
+      <button class="like-btn" id="likeBtn" onclick="handleLike()">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        <span class="like-count" id="likeCount">—</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-box">
+    <h3>Reset Schedule?</h3>
+    <p>This will clear all your courses and start fresh. This cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger-outline" onclick="confirmReset()">Yes, Reset</button>
+    </div>
+  </div>
+</div>
+
+<main class="main">
+
+  <section class="hero">
+    <div class="hero-badge">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      Ramadan 2025
+    </div>
+    <h1>Convert Your <span>Class Schedule</span></h1>
+    <p>Add your courses, pick multiple days at once, select time — see the Ramadan schedule instantly.</p>
+  </section>
+
+  <section class="entries-section">
+    <div class="card">
+      <div class="card-header">
+        <h2>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+          Your Courses
+        </h2>
+        <span id="entryCount" style="font-size:13px;color:var(--text-muted);font-weight:500;">0 / 6</span>
+      </div>
+      <div class="card-body">
+        <div class="entry-list" id="entryList"></div>
+        <div class="empty-state" id="emptyState">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+          <p>No courses added yet</p>
+          <small>Click "Add Course" to build your schedule</small>
+        </div>
+        <div class="actions-row">
+          <button class="btn btn-primary" id="addBtn" onclick="addEntry()">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+            Add Course
+          </button>
+          <button class="btn btn-secondary" onclick="downloadPDF()">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+            Download PDF
+          </button>
+          <button class="btn btn-danger-outline" onclick="showResetModal()">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            Reset
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="schedule-section">
+    <div class="card">
+      <div class="card-header">
+        <h2>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+          Ramadan Schedule Preview
+        </h2>
+      </div>
+      <div class="card-body" style="padding:0;">
+        <div class="schedule-scroll">
+          <table class="schedule-table" id="scheduleTable">
+            <thead id="scheduleHead"></thead>
+            <tbody id="scheduleBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="footer-line"></div>
+  <p class="footer-credit">Created by <a href="https://ahnafhussain.vercel.app/" target="_blank" rel="noopener">Ahnaf Hussain</a></p>
+  <p class="footer-sub">BRAC University — Ramadan Routine Converter</p>
+</footer>
+
+<script>
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const DAY_SHORT = {Sunday:'Sun',Monday:'Mon',Tuesday:'Tue',Wednesday:'Wed',Thursday:'Thu',Friday:'Fri',Saturday:'Sat'};
+const MAX_ENTRIES = 6;
+const STORAGE_KEY = 'bracu_ramadan_entries_v2';
+const LIKE_FLAG = 'bracu_ramadan_liked';
+const COUNTER_NS = 'bracu-ramadan-schedule';
+const COUNTER_NAME = 'likes';
+
+let courseCodes = [];
+let timeMap = [];
+let entries = [];
+
+async function init() {
+  try {
+    const [codesRes, timesRes] = await Promise.all([
+      fetch('bracu_course_codes.json'), fetch('time_map.json')
+    ]);
+    if (codesRes.ok) courseCodes = await codesRes.json();
+    if (timesRes.ok) timeMap = await timesRes.json();
+  } catch(e) { console.warn('JSON fetch failed'); }
+
+  if (!courseCodes.length) {
+    courseCodes = ["ACT201","ACT202","ACT301","ACT421","ACT425","ACT431","ANT101","ANT103","ANT202","ANT203","ANT320","ANT321","ANT335","ANT342","ANT351","ANT370","APBN101","APE103","APE400","APE450","ARC101","ARC102","ARC111","ARC112","ARC113","ARC121","ARC122","ARC123","ARC201","ARC202","ARC214","ARC224","ARC225","ARC231","ARC241","ARC242","ARC251","ARC252","ARC293","ARC294","ARC301","ARC312","ARC315","ARC327","ARC343","ARC401","ARC412","ARC413","ARC431","ARC432","ARC441","ARC452","ARC491","ARC494","BCH101","BCH102","BCH201","BCH202","BIO101","BNG103","BTE101","BTE102","BTE103","BTE155","BTE201","BTE202","BTE203","BTE204","BTE255","BTE258","BTE302","BTE303","BTE304","BTE306","BTE307","BTE308","BTE313","BTE317","BTE355","BTE400","BTE401","BTE402","BTE403","BTE404","BTE406","BTE411","BTE450","BUS102","BUS201","BUS202","BUS203","BUS204","BUS301","BUS302","BUS321","BUS333","CEE211","CEE212","CEE213","CEE312","CEE411","CEE412","CHE101","CHE110","CHN101","CSE101","CSE103","CSE110","CSE111","CSE161","CSE162","CSE220","CSE221","CSE230","CSE250","CSE251","CSE260","CSE310","CSE320","CSE321","CSE330","CSE331","CSE340","CSE341","CSE350","CSE360","CSE370","CSE371","CSE390","CSE391","CSE400","CSE419","CSE420","CSE421","CSE422","CSE423","CSE424","CSE425","CSE426","CSE431","CSE437","CSE447","CSE450","CSE457","CSE460","CSE461","CSE470","CSE471","CSE474","CSE481","CSE489","CSE495","CST301","CST302","CST303","CST304","CST305","CST306","CST307","CST308","CST309","CST310","ECE101","ECE103","ECE201","ECE202","ECE203","ECE204","ECE205","ECE206","ECE207","ECE208","ECE209","ECE221","ECE223","ECE224","ECE241","ECE243","ECE282","ECE283","ECE301","ECE302","ECE305","ECE306","ECE308","ECE309","ECE341","ECE342","ECE343","ECE344","ECE349","ECE350","ECE359","ECE365","ECE366","ECE401","ECE403","ECE411","ECE412","ECE415","ECE445","ECE446","ECE498","ECO101","ECO102","ECO104","ECO105","ECO201","ECO202","ECO206","ECO207","ECO208","ECO209","ECO303","ECO305","ECO308","ECO309","ECO310","ECO311","ECO322","ECO324","ECO431","ECO432","EEE101","EEE103","EEE201","EEE202","EEE203","EEE204","EEE205","EEE206","EEE207","EEE208","EEE209","EEE221","EEE223","EEE224","EEE241","EEE243","EEE282","EEE283","EEE301","EEE302","EEE305","EEE306","EEE308","EEE309","EEE321","EEE322","EEE341","EEE342","EEE343","EEE344","EEE349","EEE350","EEE359","EEE365","EEE366","EEE401","EEE403","EEE411","EEE412","EEE415","EEE423","EEE435","EEE445","EEE446","EEE498","EMB101","ENG091","ENG101","ENG102","ENG103","ENG111","ENG113","ENG114","ENG115","ENG201","ENG203","ENG211","ENG214","ENG217","ENG242","ENG301","ENG319","ENG327","ENG331","ENG333","ENG334","ENG355","ENG439","ENG461","ENG465","ENG466","ENG490","ENV101","ENV103","FIN201","FIN301","FIN421","FIN422","FIN424","FIN425","FIN427","FIN441","FRN101","GEO101","HST102","HST103","HST104","HST302","HST304","HUM101","HUM102","HUM103","LAW101","LAW102","LAW103","LAW104","LAW201","LAW202","LAW204","LAW205","LAW301","LAW302","LAW303","LAW304","LAW305","LAW306","LAW307","LAW308","LAW346","LAW401","LAW402","LAW403","LAW404","LAW425","LAW434","LAW435","LAW447","LAW448","MAT091","MAT092","MAT101","MAT103","MAT104","MAT110","MAT111","MAT120","MAT123","MAT204","MAT212","MAT215","MAT216","MAT222","MAT301","MAT311","MAT400","MGT201","MGT211","MGT213","MGT301","MGT401","MGT421","MGT422","MGT423","MGT424","MGT425","MGT426","MGT427","MGT431","MIC101","MIC102","MIC155","MIC201","MIC202","MIC203","MIC204","MIC206","MIC255","MIC300","MIC301","MIC302","MIC303","MIC306","MIC308","MIC309","MIC310","MIC355","MIC400","MIC401","MIC402","MIC403","MIC406","MIC407","MIC450","MIC455","MKT201","MKT301","MKT421","MKT423","MKT424","MKT425","MKT426","MKT428","MKT431","MSC141","MSC142","MSC301","MSC421","MSC422","MSC425","MSC442","MSC443","MSC444","MSC445","MSC448","MSC449","MSC452","MSC454","PHY101","PHY102","PHY111","PHY112","PHY113","PHY301","PHY400","PHY401","POL101","POL102","POL201","PSY101","PSY421","SOC101","SOC201","SOC301","SOC320","SOC335","SOC370","STA101","STA201","STA301"];
+  }
+
+  if (!timeMap.length) {
+    timeMap = [
+      {current:"08:00 AM - 09:20 AM",ramadan:"08:00 AM - 09:05 AM"},
+      {current:"09:30 AM - 10:50 AM",ramadan:"09:15 AM - 10:20 AM"},
+      {current:"11:00 AM - 12:20 PM",ramadan:"10:30 AM - 11:35 AM"},
+      {current:"12:30 PM - 01:50 PM",ramadan:"11:45 AM - 12:50 PM"},
+      {current:"02:00 PM - 03:20 PM",ramadan:"01:00 PM - 02:05 PM"},
+      {current:"03:30 PM - 04:50 PM",ramadan:"02:15 PM - 03:20 PM"},
+      {current:"05:00 PM - 06:20 PM",ramadan:"03:30 PM - 04:35 PM"}
+    ];
+  }
+
+  loadEntries();
+  renderAll();
+  fetchLikes();
+}
+
+function saveEntries() { localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); }
+
+function loadEntries() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      entries = JSON.parse(raw).map(e => ({
+        id: e.id, code: e.code || '',
+        days: Array.isArray(e.days) ? e.days : (e.day ? [e.day] : []),
+        time: e.time || '',
+        type: e.type || 'theory'
+      }));
+    }
+  } catch(e) { entries = []; }
+}
+
+function addEntry() {
+  if (entries.length >= MAX_ENTRIES) return;
+  entries.push({ id: Date.now(), code: '', days: [], time: '', type: 'theory' });
+  saveEntries();
+  renderAll();
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('.typeahead-input');
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  }, 60);
+}
+
+function removeEntry(id) {
+  entries = entries.filter(e => e.id !== id);
+  saveEntries();
+  renderAll();
+}
+
+function updateEntryField(id, field, value) {
+  const entry = entries.find(e => e.id === id);
+  if (!entry) return;
+  entry[field] = value;
+  saveEntries();
+  renderSchedule();
+}
+
+function setEntryType(id, type) {
+  const entry = entries.find(e => e.id === id);
+  if (!entry) return;
+
+  // When switching to lab, check if selected time has a next slot
+  if (type === 'lab' && entry.time) {
+    const slotIdx = timeMap.findIndex(t => t.current === entry.time);
+    if (slotIdx === timeMap.length - 1) {
+      showToast('Last time slot cannot be a lab — labs need 2 consecutive slots.');
+      return;
+    }
+    // Check collisions for the second slot too
+    if (entry.days.length) {
+      const nextTime = timeMap[slotIdx + 1].current;
+      for (const day of entry.days) {
+        const c = findCollisionSingle(id, day, nextTime);
+        if (c) {
+          showToast(`Collision: "${c.code || 'Untitled'}" conflicts with the lab's second slot on ${day}.`);
+          return;
+        }
+      }
+    }
+  }
+
+  entry.type = type;
+  saveEntries();
+  renderAll();
+}
+
+function toggleDay(entryId, day) {
+  const entry = entries.find(e => e.id === entryId);
+  if (!entry) return;
+  const adding = !entry.days.includes(day);
+  if (adding && entry.time) {
+    // Check collision for primary slot
+    const c1 = findCollisionSingle(entryId, day, entry.time);
+    if (c1) {
+      showToast(`Collision: "${c1.code || 'Untitled'}" already has ${day} at ${entry.time}.`);
+      highlightCollision(entryId); highlightCollision(c1.id);
+      return;
+    }
+    // If lab, also check next slot
+    if (entry.type === 'lab') {
+      const slotIdx = timeMap.findIndex(t => t.current === entry.time);
+      if (slotIdx < timeMap.length - 1) {
+        const c2 = findCollisionSingle(entryId, day, timeMap[slotIdx + 1].current);
+        if (c2) {
+          showToast(`Collision: "${c2.code || 'Untitled'}" conflicts with the lab's second slot on ${day}.`);
+          highlightCollision(entryId); highlightCollision(c2.id);
+          return;
+        }
+      }
+    }
+    // Also check if another lab's second slot overlaps with this entry's slot
+    const overlapLab = findLabOverlap(entryId, day, entry.time, entry.type);
+    if (overlapLab) {
+      showToast(`Collision: "${overlapLab.code || 'Untitled'}" lab extends into this time on ${day}.`);
+      highlightCollision(entryId); highlightCollision(overlapLab.id);
+      return;
+    }
+  }
+  entry.days = adding ? [...entry.days, day] : entry.days.filter(d => d !== day);
+  saveEntries();
+  renderAll();
+}
+
+function updateEntryTime(id, newTime) {
+  const entry = entries.find(e => e.id === id);
+  if (!entry) return;
+
+  // Lab: block last slot
+  if (entry.type === 'lab' && newTime) {
+    const slotIdx = timeMap.findIndex(t => t.current === newTime);
+    if (slotIdx === timeMap.length - 1) {
+      showToast('Last time slot cannot be selected for a lab — labs need 2 consecutive slots.');
+      return;
+    }
+  }
+
+  if (newTime && entry.days.length) {
+    for (const day of entry.days) {
+      const c = findCollisionSingle(id, day, newTime);
+      if (c) {
+        showToast(`Collision: "${c.code || 'Untitled'}" already has ${day} at ${newTime}.`);
+        highlightCollision(id); highlightCollision(c.id);
+        return;
+      }
+      // Lab second slot check
+      if (entry.type === 'lab') {
+        const slotIdx = timeMap.findIndex(t => t.current === newTime);
+        if (slotIdx < timeMap.length - 1) {
+          const c2 = findCollisionSingle(id, day, timeMap[slotIdx + 1].current);
+          if (c2) {
+            showToast(`Collision: "${c2.code || 'Untitled'}" conflicts with the lab's second slot on ${day}.`);
+            highlightCollision(id); highlightCollision(c2.id);
+            return;
+          }
+        }
+      }
+      // Check against other labs overlapping
+      const overlapLab = findLabOverlap(id, day, newTime, entry.type);
+      if (overlapLab) {
+        showToast(`Collision: "${overlapLab.code || 'Untitled'}" lab extends into this time on ${day}.`);
+        highlightCollision(id); highlightCollision(overlapLab.id);
+        return;
+      }
+    }
+  }
+
+  entry.time = newTime;
+  saveEntries();
+  renderAll();
+}
+
+// Check if a single day+time slot collides with another entry's primary slot
+function findCollisionSingle(excludeId, day, time) {
+  for (const o of entries) {
+    if (o.id === excludeId || !o.time || !o.days.includes(day)) continue;
+    // Direct match with primary slot
+    if (o.time === time) return o;
+    // If other entry is a lab, check its second slot
+    if (o.type === 'lab') {
+      const idx = timeMap.findIndex(t => t.current === o.time);
+      if (idx >= 0 && idx < timeMap.length - 1 && timeMap[idx + 1].current === time) return o;
+    }
+  }
+  return null;
+}
+
+// Check if another lab's second slot overlaps with this entry's slots
+function findLabOverlap(excludeId, day, time, myType) {
+  const mySlotIdx = timeMap.findIndex(t => t.current === time);
+  // Check: does my slot (or my second slot if lab) get hit by another lab's second slot?
+  for (const o of entries) {
+    if (o.id === excludeId || !o.time || !o.days.includes(day)) continue;
+    if (o.type === 'lab') {
+      const oIdx = timeMap.findIndex(t => t.current === o.time);
+      if (oIdx >= 0 && oIdx < timeMap.length - 1) {
+        const oSecondTime = timeMap[oIdx + 1].current;
+        if (oSecondTime === time) return o;
+        if (myType === 'lab' && mySlotIdx < timeMap.length - 1) {
+          if (oSecondTime === timeMap[mySlotIdx + 1].current) return o;
+          if (o.time === timeMap[mySlotIdx + 1].current) return o;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function findCollision(excludeId, day, time) {
+  return findCollisionSingle(excludeId, day, time);
+}
+
+function highlightCollision(id) {
+  const row = document.querySelector(`[data-entry-id="${id}"]`);
+  if (row) { row.classList.add('collision'); setTimeout(() => row.classList.remove('collision'), 1500); }
+}
+
+function getRamadanTime(t, type) {
+  if (!t) return '';
+  const idx = timeMap.findIndex(x => x.current === t);
+  if (idx < 0) return '';
+  if (type === 'lab') {
+    if (idx >= timeMap.length - 1) return 'N/A (need 2 slots)';
+    const start = timeMap[idx].ramadan.split(' - ')[0];
+    const end = timeMap[idx + 1].ramadan.split(' - ')[1];
+    return start + ' - ' + end;
+  }
+  return timeMap[idx].ramadan;
+}
+
+function getCurrentTimeDisplay(t, type) {
+  if (!t) return '';
+  if (type === 'lab') {
+    const idx = timeMap.findIndex(x => x.current === t);
+    if (idx < 0 || idx >= timeMap.length - 1) return t;
+    const start = t.split(' - ')[0];
+    const end = timeMap[idx + 1].current.split(' - ')[1];
+    return start + ' - ' + end;
+  }
+  return t;
+}
+
+function getFlatEntries() {
+  const flat = [];
+  for (const e of entries) {
+    if (!e.code || !e.time || !e.days.length) continue;
+    const displayCode = e.type === 'lab' ? e.code + 'L' : e.code;
+    for (const d of e.days) {
+      flat.push({ code: displayCode, day: d, time: e.time, type: e.type });
+      // Lab occupies 2 consecutive slots
+      if (e.type === 'lab') {
+        const idx = timeMap.findIndex(t => t.current === e.time);
+        if (idx >= 0 && idx < timeMap.length - 1) {
+          flat.push({ code: displayCode, day: d, time: timeMap[idx + 1].current, type: 'lab-cont' });
+        }
+      }
+    }
+  }
+  return flat;
+}
+
+function renderAll() { renderEntries(); renderSchedule(); updateUI(); }
+
+function updateUI() {
+  document.getElementById('entryCount').textContent = `${entries.length} / ${MAX_ENTRIES}`;
+  document.getElementById('addBtn').disabled = entries.length >= MAX_ENTRIES;
+  document.getElementById('emptyState').style.display = entries.length === 0 ? 'block' : 'none';
+}
+
+function renderEntries() {
+  const list = document.getElementById('entryList');
+  list.innerHTML = '';
+  entries.forEach(entry => {
+    const row = document.createElement('div');
+    row.className = 'entry-row';
+    row.dataset.entryId = entry.id;
+    const ramadan = getRamadanTime(entry.time, entry.type);
+
+    row.innerHTML = `
+      <button class="btn-remove-entry" onclick="removeEntry(${entry.id})" title="Remove">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+      </button>
+      <div class="entry-top">
+        <div class="field-group">
+          <label class="field-label">Course Code</label>
+          <div class="typeahead-wrap">
+            <input type="text" class="field-input typeahead-input"
+                   value="${esc(entry.code)}"
+                   placeholder="Type to search… e.g. CSE"
+                   data-id="${entry.id}"
+                   autocomplete="off" spellcheck="false">
+            <div class="typeahead-dropdown" id="ta-${entry.id}"></div>
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Type</label>
+          <div class="type-toggle">
+            <button class="type-toggle-btn ${entry.type==='theory'?'active':''}" data-id="${entry.id}" data-type="theory">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+              Theory
+            </button>
+            <button class="type-toggle-btn ${entry.type==='lab'?'active':''}" data-id="${entry.id}" data-type="lab">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l1 7H8L9 3z"/><path d="M8 10l-2 8c-.3 1.3.5 3 2 3h8c1.5 0 2.3-1.7 2-3l-2-8"/></svg>
+              Lab
+            </button>
+          </div>
+          ${entry.type==='lab' ? '<div class="lab-info">Spans 2 consecutive slots</div>' : ''}
+        </div>
+        <div class="field-group">
+          <label class="field-label">Current Time${entry.type==='lab' ? ' (start)' : ''}</label>
+          <select class="field-select time-select" data-id="${entry.id}">
+            <option value="">Select time</option>
+            ${timeMap.map((t, i) => {
+              const disabled = entry.type === 'lab' && i === timeMap.length - 1;
+              return `<option value="${t.current}" ${entry.time===t.current?'selected':''} ${disabled?'disabled':''}>${t.current}</option>`;
+            }).join('')}
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Ramadan Time</label>
+          <div class="ramadan-time-display ${ramadan?'':'empty'}">${ramadan || 'Auto-filled'}</div>
+        </div>
+      </div>
+      <div class="day-select-section">
+        <div class="day-select-label">Select Days <span>(click multiple)</span></div>
+        <div class="day-chips">
+          ${DAYS.map(d => `<div class="day-chip ${entry.days.includes(d)?'selected':''}" data-entry="${entry.id}" data-day="${d}">${DAY_SHORT[d]}</div>`).join('')}
+        </div>
+      </div>`;
+
+    list.appendChild(row);
+
+    const input = row.querySelector('.typeahead-input');
+    const dropdown = row.querySelector('.typeahead-dropdown');
+    setupTypeahead(input, dropdown, entry.id);
+
+    row.querySelector('.time-select').addEventListener('change', e => {
+      updateEntryTime(parseInt(e.target.dataset.id), e.target.value);
+    });
+
+    // Type toggle
+    row.querySelectorAll('.type-toggle-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        setEntryType(parseInt(btn.dataset.id), btn.dataset.type);
+      });
+    });
+
+    row.querySelectorAll('.day-chip').forEach(chip => {
+      chip.addEventListener('click', () => toggleDay(parseInt(chip.dataset.entry), chip.dataset.day));
+    });
+  });
+}
+
+/* ── Typeahead ──────────────────────────────────────── */
+function setupTypeahead(input, dropdown, entryId) {
+  let activeIndex = -1;
+  let filtered = [];
+
+  function search(query) {
+    if (!query) return courseCodes.slice(0, 12);
+    const q = query.toUpperCase().trim();
+    const prefix = courseCodes.filter(c => c.startsWith(q));
+    const contains = courseCodes.filter(c => !c.startsWith(q) && c.includes(q));
+    return [...prefix, ...contains].slice(0, 15);
+  }
+
+  function renderDD() {
+    if (!filtered.length) { dropdown.classList.remove('open'); return; }
+    dropdown.innerHTML = filtered.map((code, i) => {
+      return `<div class="typeahead-item ${i===activeIndex?'active':''}" data-index="${i}">${esc(code)}</div>`;
+    }).join('');
+    dropdown.classList.add('open');
+  }
+
+  function selectItem(code) {
+    input.value = code;
+    dropdown.classList.remove('open');
+    activeIndex = -1;
+    filtered = [];
+    updateEntryField(entryId, 'code', code);
+  }
+
+  input.addEventListener('input', () => {
+    const q = input.value.trim();
+    filtered = search(q);
+    activeIndex = -1;
+    renderDD();
+    updateEntryField(entryId, 'code', q);
+  });
+
+  input.addEventListener('keydown', e => {
+    if (!dropdown.classList.contains('open')) {
+      if (e.key === 'ArrowDown') { filtered = search(input.value.trim()); activeIndex = -1; renderDD(); }
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      activeIndex = Math.min(activeIndex + 1, filtered.length - 1);
+      renderDD();
+      const a = dropdown.querySelector('.active');
+      if (a) a.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      activeIndex = Math.max(activeIndex - 1, 0);
+      renderDD();
+      const a = dropdown.querySelector('.active');
+      if (a) a.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (activeIndex >= 0 && filtered[activeIndex]) selectItem(filtered[activeIndex]);
+      else dropdown.classList.remove('open');
+    } else if (e.key === 'Escape') dropdown.classList.remove('open');
+  });
+
+  dropdown.addEventListener('mousedown', e => {
+    e.preventDefault();
+    const item = e.target.closest('.typeahead-item');
+    if (item) selectItem(filtered[parseInt(item.dataset.index)]);
+  });
+
+  input.addEventListener('blur', () => { setTimeout(() => dropdown.classList.remove('open'), 200); });
+  input.addEventListener('focus', () => { filtered = search(input.value.trim()); activeIndex = -1; renderDD(); });
+}
+
+/* ── Schedule ──────────────────────────────────────── */
+function renderSchedule() {
+  const head = document.getElementById('scheduleHead');
+  const body = document.getElementById('scheduleBody');
+  const flat = getFlatEntries();
+  head.innerHTML = `<tr><th>Ramadan Time</th>${DAYS.map(d => `<th>${DAY_SHORT[d]}</th>`).join('')}</tr>`;
+  body.innerHTML = timeMap.map(slot => {
+    const cells = DAYS.map(day => {
+      const match = flat.find(f => f.day === day && f.time === slot.current);
+      if (match) {
+        const isLab = match.type === 'lab' || match.type === 'lab-cont';
+        return `<td><span class="schedule-cell ${isLab?'lab-cell':''}">${esc(match.code)}</span></td>`;
+      }
+      return '<td></td>';
+    }).join('');
+    return `<tr><td>${slot.ramadan}</td>${cells}</tr>`;
+  }).join('');
+}
+
+/* ── PDF ───────────────────────────────────────────── */
+function downloadPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const flat = getFlatEntries();
+
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(16);
+  doc.setTextColor(201,168,76);
+  doc.text('Ramadan Class Schedule', 14, 18);
+
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.setTextColor(120,120,120);
+  doc.text('BRAC University — Ramadan Routine Converter', 14, 24);
+
+  const headers = [['Ramadan Time', ...DAYS.map(d => DAY_SHORT[d])]];
+  const rows = timeMap.map(slot => {
+    const cells = DAYS.map(day => {
+      const m = flat.find(f => f.day === day && f.time === slot.current);
+      return m ? m.code : '';
+    });
+    return [slot.ramadan, ...cells];
+  });
+
+  doc.autoTable({
+    head: headers, body: rows, startY: 30, theme: 'grid',
+    styles: { font: 'helvetica', fontSize: 9, cellPadding: 4, halign: 'center', valign: 'middle', lineWidth: 0.3, lineColor: [60,60,60], fillColor: [20,20,20], textColor: [200,200,200] },
+    headStyles: { fillColor: [40,36,28], textColor: [201,168,76], fontStyle: 'bold', fontSize: 9 },
+    columnStyles: { 0: { halign: 'left', fontStyle: 'bold', cellWidth: 40 } },
+    alternateRowStyles: { fillColor: [25,25,25] },
+    didParseCell: function(data) {
+      if (data.section === 'body' && data.column.index > 0 && data.cell.raw) {
+        data.cell.styles.textColor = [201,168,76];
+        data.cell.styles.fontStyle = 'bold';
+      }
+    }
+  });
+
+  const pH = doc.internal.pageSize.getHeight();
+  doc.setFontSize(8);
+  doc.setTextColor(160,160,160);
+  doc.text('Created by Ahnaf Hussain — ahnafhussain.vercel.app', 14, pH - 8);
+  doc.save('ramadan-class-schedule.pdf');
+  showToast('PDF downloaded!', 'success');
+}
+
+/* ── Like Counter ──────────────────────────────────── */
+async function fetchLikes() {
+  const btn = document.getElementById('likeBtn');
+  const countEl = document.getElementById('likeCount');
+  if (localStorage.getItem(LIKE_FLAG)) { btn.classList.add('liked'); btn.disabled = true; }
+  try {
+    const res = await fetch(`https://api.counterapi.dev/v1/${COUNTER_NS}/${COUNTER_NAME}`);
+    if (res.ok) { const d = await res.json(); countEl.textContent = d.count ?? 0; }
+  } catch(e) {}
+}
+
+async function handleLike() {
+  const btn = document.getElementById('likeBtn');
+  const countEl = document.getElementById('likeCount');
+  if (localStorage.getItem(LIKE_FLAG)) return;
+  btn.disabled = true;
+  try {
+    const res = await fetch(`https://api.counterapi.dev/v1/${COUNTER_NS}/${COUNTER_NAME}/up`);
+    if (res.ok) {
+      const d = await res.json();
+      countEl.textContent = d.count ?? '—';
+      localStorage.setItem(LIKE_FLAG, '1');
+      btn.classList.add('liked');
+      showToast('Thanks for the love!', 'success');
+    } else { btn.disabled = false; showToast('Could not register like.'); }
+  } catch(e) { btn.disabled = false; showToast('Network error.'); }
+}
+
+/* ── Toast ─────────────────────────────────────────── */
+function showToast(msg, type = 'error') {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  const icon = type === 'success'
+    ? '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#4CAF7D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>'
+    : '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#E05555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" x2="9" y1="9" y2="15"/><line x1="9" x2="15" y1="9" y2="15"/></svg>';
+  t.innerHTML = icon + `<span>${esc(msg)}</span>`;
+  c.appendChild(t);
+  setTimeout(() => { t.style.animation = 'slideOut 0.3s ease forwards'; setTimeout(() => t.remove(), 300); }, 3500);
+}
+
+function showResetModal() { if (!entries.length) return; document.getElementById('confirmModal').classList.add('open'); }
+function closeModal() { document.getElementById('confirmModal').classList.remove('open'); }
+function confirmReset() {
+  entries = [];
+  localStorage.removeItem(STORAGE_KEY);
+  closeModal();
+  renderAll();
+  showToast('Schedule cleared.', 'success');
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

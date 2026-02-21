@@ -1,0 +1,30 @@
+[
+  {
+    "current": "08:00 AM - 09:20 AM",
+    "ramadan": "08:00 AM - 09:05 AM"
+  },
+  {
+    "current": "09:30 AM - 10:50 AM",
+    "ramadan": "09:15 AM - 10:20 AM"
+  },
+  {
+    "current": "11:00 AM - 12:20 PM",
+    "ramadan": "10:30 AM - 11:35 AM"
+  },
+  {
+    "current": "12:30 PM - 01:50 PM",
+    "ramadan": "11:45 AM - 12:50 PM"
+  },
+  {
+    "current": "02:00 PM - 03:20 PM",
+    "ramadan": "01:00 PM - 02:05 PM"
+  },
+  {
+    "current": "03:30 PM - 04:50 PM",
+    "ramadan": "02:15 PM - 03:20 PM"
+  },
+  {
+    "current": "05:00 PM - 06:20 PM",
+    "ramadan": "03:30 PM - 04:35 PM"
+  }
+]
