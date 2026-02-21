@@ -889,8 +889,9 @@ const DAY_SHORT = {Sunday:'Sun',Monday:'Mon',Tuesday:'Tue',Wednesday:'Wed',Thurs
 const MAX_ENTRIES = 6;
 const STORAGE_KEY = 'bracu_ramadan_entries_v2';
 const LIKE_FLAG = 'bracu_ramadan_liked';
-const COUNTER_NS = 'bracu_ramadan_schedule';
-const COUNTER_NAME = 'likes';
+const COUNTER_NS = 'bracu-ramadan-converter';
+const COUNTER_KEY = 'sitelikes';
+const ABACUS = 'https://abacus.jasoncameron.dev';
 
 let courseCodes = [];
 let timeMap = [];
@@ -1399,53 +1400,50 @@ function downloadPDF() {
   showToast('PDF downloaded!', 'success');
 }
 
-/* ── Like Counter ──────────────────────────────────── */
+/* ── Like Counter (Abacus API) ─────────────────────── */
 async function fetchLikes() {
   const btn = document.getElementById('likeBtn');
   const countEl = document.getElementById('likeCount');
   if (localStorage.getItem(LIKE_FLAG)) { btn.classList.add('liked'); btn.disabled = true; }
   try {
-    const res = await fetch(`https://counterapi.com/api/${COUNTER_NS}/view/${COUNTER_NAME}?readOnly=true`, { mode: 'cors' });
-    if (res.ok) { const d = await res.json(); countEl.textContent = d.value ?? 0; }
-    else { countEl.textContent = localStorage.getItem('bracu_like_cache') || '0'; }
-  } catch(e) {
-    countEl.textContent = localStorage.getItem('bracu_like_cache') || '0';
-  }
+    const res = await fetch(`${ABACUS}/get/${COUNTER_NS}/${COUNTER_KEY}`);
+    if (res.ok) {
+      const d = await res.json();
+      countEl.textContent = d.value ?? 0;
+      localStorage.setItem('bracu_like_cache', d.value);
+    } else { countEl.textContent = localStorage.getItem('bracu_like_cache') || '0'; }
+  } catch(e) { countEl.textContent = localStorage.getItem('bracu_like_cache') || '0'; }
 }
 
 async function handleLike() {
   const btn = document.getElementById('likeBtn');
   const countEl = document.getElementById('likeCount');
   if (localStorage.getItem(LIKE_FLAG)) return;
-
   btn.disabled = true;
   try {
-    const res = await fetch(`https://counterapi.com/api/${COUNTER_NS}/view/${COUNTER_NAME}`, { mode: 'cors' });
+    const res = await fetch(`${ABACUS}/hit/${COUNTER_NS}/${COUNTER_KEY}`);
     if (res.ok) {
       const d = await res.json();
-      const val = d.value ?? '—';
-      countEl.textContent = val;
-      localStorage.setItem('bracu_like_cache', val);
+      countEl.textContent = d.value ?? 1;
+      localStorage.setItem('bracu_like_cache', d.value);
       localStorage.setItem(LIKE_FLAG, '1');
       btn.classList.add('liked');
       showToast('Thanks for the love!', 'success');
     } else {
-      // Fallback: just mark locally
       localStorage.setItem(LIKE_FLAG, '1');
       btn.classList.add('liked');
-      const cached = parseInt(localStorage.getItem('bracu_like_cache') || '0') + 1;
-      countEl.textContent = cached;
-      localStorage.setItem('bracu_like_cache', cached);
-      showToast('Liked! (saved locally)', 'success');
+      const c = parseInt(localStorage.getItem('bracu_like_cache') || '0') + 1;
+      countEl.textContent = c;
+      localStorage.setItem('bracu_like_cache', c);
+      showToast('Liked!', 'success');
     }
   } catch(e) {
-    // Fallback: just mark locally even if API fails
     localStorage.setItem(LIKE_FLAG, '1');
     btn.classList.add('liked');
-    const cached = parseInt(localStorage.getItem('bracu_like_cache') || '0') + 1;
-    countEl.textContent = cached;
-    localStorage.setItem('bracu_like_cache', cached);
-    showToast('Liked! (saved locally)', 'success');
+    const c = parseInt(localStorage.getItem('bracu_like_cache') || '0') + 1;
+    countEl.textContent = c;
+    localStorage.setItem('bracu_like_cache', c);
+    showToast('Liked!', 'success');
   }
 }
 
