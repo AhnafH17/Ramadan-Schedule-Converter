@@ -889,7 +889,7 @@ const DAY_SHORT = {Sunday:'Sun',Monday:'Mon',Tuesday:'Tue',Wednesday:'Wed',Thurs
 const MAX_ENTRIES = 6;
 const STORAGE_KEY = 'bracu_ramadan_entries_v2';
 const LIKE_FLAG = 'bracu_ramadan_liked';
-const COUNTER_NS = 'bracu-ramadan-schedule';
+const COUNTER_NS = 'bracu_ramadan_schedule';
 const COUNTER_NAME = 'likes';
 
 let courseCodes = [];
@@ -1405,26 +1405,48 @@ async function fetchLikes() {
   const countEl = document.getElementById('likeCount');
   if (localStorage.getItem(LIKE_FLAG)) { btn.classList.add('liked'); btn.disabled = true; }
   try {
-    const res = await fetch(`https://api.counterapi.dev/v1/${COUNTER_NS}/${COUNTER_NAME}`);
-    if (res.ok) { const d = await res.json(); countEl.textContent = d.count ?? 0; }
-  } catch(e) {}
+    const res = await fetch(`https://counterapi.com/api/${COUNTER_NS}/view/${COUNTER_NAME}?readOnly=true`, { mode: 'cors' });
+    if (res.ok) { const d = await res.json(); countEl.textContent = d.value ?? 0; }
+    else { countEl.textContent = localStorage.getItem('bracu_like_cache') || '0'; }
+  } catch(e) {
+    countEl.textContent = localStorage.getItem('bracu_like_cache') || '0';
+  }
 }
 
 async function handleLike() {
   const btn = document.getElementById('likeBtn');
   const countEl = document.getElementById('likeCount');
   if (localStorage.getItem(LIKE_FLAG)) return;
+
   btn.disabled = true;
   try {
-    const res = await fetch(`https://api.counterapi.dev/v1/${COUNTER_NS}/${COUNTER_NAME}/up`);
+    const res = await fetch(`https://counterapi.com/api/${COUNTER_NS}/view/${COUNTER_NAME}`, { mode: 'cors' });
     if (res.ok) {
       const d = await res.json();
-      countEl.textContent = d.count ?? '—';
+      const val = d.value ?? '—';
+      countEl.textContent = val;
+      localStorage.setItem('bracu_like_cache', val);
       localStorage.setItem(LIKE_FLAG, '1');
       btn.classList.add('liked');
       showToast('Thanks for the love!', 'success');
-    } else { btn.disabled = false; showToast('Could not register like.'); }
-  } catch(e) { btn.disabled = false; showToast('Network error.'); }
+    } else {
+      // Fallback: just mark locally
+      localStorage.setItem(LIKE_FLAG, '1');
+      btn.classList.add('liked');
+      const cached = parseInt(localStorage.getItem('bracu_like_cache') || '0') + 1;
+      countEl.textContent = cached;
+      localStorage.setItem('bracu_like_cache', cached);
+      showToast('Liked! (saved locally)', 'success');
+    }
+  } catch(e) {
+    // Fallback: just mark locally even if API fails
+    localStorage.setItem(LIKE_FLAG, '1');
+    btn.classList.add('liked');
+    const cached = parseInt(localStorage.getItem('bracu_like_cache') || '0') + 1;
+    countEl.textContent = cached;
+    localStorage.setItem('bracu_like_cache', cached);
+    showToast('Liked! (saved locally)', 'success');
+  }
 }
 
 /* ── Toast ─────────────────────────────────────────── */
